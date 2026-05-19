@@ -1,15 +1,12 @@
 const express = require('express'); // Creates Web Server
-const db = require('./db'); // <-- import our db module
+const db = require('./db'); // Imports the database 
 const path = require('path');
-const app = express(); // My server
+const app = express(); // Starts the express app for server
 
 app.use(express.json()); // Lets server read JSON requests
 app.use(express.static(path.join(__dirname))); // Serves frontend static files from current directory
 
-// ----------------------
 // Helper functions
-// ----------------------
-
 // Checks if a location exists in the database
 function locationExists(location) {
   const stmt = db.prepare('SELECT location FROM locations WHERE location = ?');
@@ -43,12 +40,18 @@ function removeStock(sku, location, qty) {
   stmt.run(qty, sku, location);
 }
 
-// ----------------------
 // Stock Move Endpoint
-// ----------------------
-
 app.post('/move-stock', (req, res) => {
   const { sku, fromLocation, toLocation, quantity } = req.body;
+
+  // Validate sku exists
+  const skuCheck = db.prepare('SELECT sku FROM skus WHERE sku = ?').get(sku);
+  if (!skuCheck) {
+    return res.status(400).json({
+      success: false,
+      error: `SKU '${sku}' does not exist`
+    });
+  }
 
   try {
     // Validate locations exist
@@ -66,12 +69,21 @@ app.post('/move-stock', (req, res) => {
       });
     }
 
-    // 1. Move stock
+    // Move stock
     removeStock(sku, fromLocation, quantity);
     addStock(sku, toLocation, quantity);
 
-    // 2. Check preferred location
+    // Warn if stock is not being moved to a preferred pick location
     const stmt = db.prepare('SELECT location FROM preferred_locations WHERE sku = ?');
+    const preferred = stmt.get(sku);
+
+    if (preferred && preferred.location !== toLocation) {
+      return res.json({
+        success: true,
+        moved: { sku, fromLocation, toLocation, quantity },
+        warning: `${toLocation} is not the preferred pick location for ${sku}. Preferred location is ${preferred.location}.`
+      });
+    }
 
     res.json({
       success: true,
@@ -91,10 +103,6 @@ app.post('/move-stock', (req, res) => {
   }
 });
 
-// ----------------------
-// View inventory
-// ----------------------
-
 app.get('/inventory', (req, res) => {
   const stmt = db.prepare('SELECT * FROM inventory');
   const inventory = stmt.all();
@@ -104,7 +112,7 @@ app.get('/inventory', (req, res) => {
 app.get('/api/sku/:sku', (req, res) => {
   const { sku } = req.params;
   const skuUpper = sku.toUpperCase();
-  
+
   // Check if SKU exists in skus table
   const skuCheck = db.prepare('SELECT sku FROM skus WHERE sku = ?').get(skuUpper);
   if (!skuCheck) {
@@ -113,11 +121,11 @@ app.get('/api/sku/:sku', (req, res) => {
       error: `SKU '${skuUpper}' not found`
     });
   }
-  
+
   // Get inventory for this SKU
   const stmt = db.prepare('SELECT * FROM inventory WHERE sku = ?');
   const skuData = stmt.all(skuUpper);
-  
+
   res.json({
     success: true,
     sku: skuUpper,
@@ -125,26 +133,25 @@ app.get('/api/sku/:sku', (req, res) => {
   });
 });
 
-// ----------------------
-// Preferred Locations API
-// ----------------------
+app.get('/api/stock/:sku', (req, res) => {
+  const sku = req.params.sku.toUpperCase();
+  const rows = db.prepare('SELECT location, quantity FROM inventory WHERE sku = ? AND quantity > 0').all(sku);
+  if (rows.length === 0) return res.status(404).json([]);
+  res.json(rows);
+});
 
 app.get('/api/preferred-locations', (req, res) => {
   const stmt = db.prepare('SELECT sku, location FROM preferred_locations');
   const rows = stmt.all();
-  
+
   // Convert to object format {sku: location}
   const locations = {};
   rows.forEach(row => {
     locations[row.sku] = row.location;
   });
-  
+
   res.json(locations);
 });
-
-// ----------------------
-// SKUs API
-// ----------------------
 
 app.get('/api/skus', (req, res) => {
   const stmt = db.prepare('SELECT sku FROM skus ORDER BY sku');
@@ -188,10 +195,6 @@ app.post('/api/skus', (req, res) => {
   }
 });
 
-// ----------------------
-// Locations API
-// ----------------------
-
 app.get('/api/locations', (req, res) => {
   const stmt = db.prepare('SELECT location FROM locations ORDER BY location');
   const rows = stmt.all();
@@ -234,20 +237,26 @@ app.post('/api/locations', (req, res) => {
   }
 });
 
-// ----------------------
-// Replenishment Report Endpoint
-// ----------------------
-
 app.get('/api/replen-report', (req, res) => {
   try {
     const stmt = db.prepare(`
       SELECT 
         p.sku,
         p.location AS preferredPick,
+
+        COALESCE(
+          (SELECT quantity 
+           FROM inventory 
+           WHERE sku = p.sku AND location = p.location), 
+          0
+        ) AS preferredQty,
+
         GROUP_CONCAT(i.location || ' (' || i.quantity || ')') AS otherLocations
+
       FROM preferred_locations p
       JOIN replen_thresholds t ON t.sku = p.sku
       JOIN inventory i ON i.sku = p.sku AND i.location != p.location
+
       WHERE
         COALESCE(
           (SELECT quantity 
@@ -256,6 +265,7 @@ app.get('/api/replen-report', (req, res) => {
           0
         ) < t.threshold
         AND i.quantity > 0
+
       GROUP BY p.sku, p.location
     `);
 
@@ -268,11 +278,7 @@ app.get('/api/replen-report', (req, res) => {
   }
 });
 
-// ----------------------
-// Set Thresholds Endpoint
-// ----------------------
-
-app.post('/api/set-thresholds', (req, res) => {
+app.post('/api/replen-thresholds', (req, res) => {
   const { skus, threshold } = req.body;
   if (!Array.isArray(skus) || skus.length === 0 || !threshold) {
     return res.status(400).json({ error: "SKUs and threshold required" });
@@ -418,10 +424,7 @@ app.delete('/api/preferred-locations/:sku', (req, res) => {
   }
 });
 
-// ----------------------
-// Start Server
-// ----------------------
-
+// Start server
 const server = app.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
 });

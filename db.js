@@ -1,4 +1,4 @@
-//Makes database and tables, adds test data if empty - used only for testing
+//Makes database and tables, adds test data if empty
 
 const Database = require('better-sqlite3'); // Database Library
 const path = require('path');
@@ -24,8 +24,7 @@ db.exec(`
         location TEXT NOT NULL,
         quantity INTEGER NOT NULL CHECK(quantity >= 0),
         UNIQUE(sku, location),
-        FOREIGN KEY(sku) REFERENCES skus(sku),
-        FOREIGN KEY(location) REFERENCES locations(location)
+        FOREIGN KEY(location) REFERENCES locations(location),
         FOREIGN KEY(sku) REFERENCES skus(sku) ON DELETE CASCADE
     );
 
@@ -33,8 +32,7 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sku TEXT UNIQUE NOT NULL,
         location TEXT NOT NULL,
-        FOREIGN KEY(sku) REFERENCES skus(sku),
-        FOREIGN KEY(location) REFERENCES locations(location)
+        FOREIGN KEY(location) REFERENCES locations(location),
         FOREIGN KEY(sku) REFERENCES skus(sku) ON DELETE CASCADE
     );
 
@@ -42,7 +40,6 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sku TEXT UNIQUE NOT NULL,
         threshold INTEGER NOT NULL,
-        FOREIGN KEY(sku) REFERENCES skus(sku)
         FOREIGN KEY(sku) REFERENCES skus(sku) ON DELETE CASCADE
     );
 `);
@@ -53,7 +50,7 @@ if (locationsCount.count === 0) {
     const insertLocation = db.prepare('INSERT INTO locations (location) VALUES (?)');
     const insertLocationsTransaction = db.transaction((locations) => {
         for (const loc of locations) {
-        insertLocation.run(loc);
+            insertLocation.run(loc);
         }
     });
     // Suffixes to append for each number
@@ -61,16 +58,16 @@ if (locationsCount.count === 0) {
 
     // Define your location ranges
     const locationRanges = {
-     A: { min: 1, max: 26, suffixes },
-     B: { min: 1, max: 21, suffixes },
-     C: { min: 1, max: 8, suffixes },
-     D: { min: 1, max: 15, suffixes },
-     E: { min: 1, max: 21, suffixes },
-     R: { min: 1, max: 2, suffixes: ['A', 'B', 'C', 'D'] },
+        A: { min: 1, max: 26, suffixes },
+        B: { min: 1, max: 21, suffixes },
+        C: { min: 1, max: 8, suffixes },
+        D: { min: 1, max: 15, suffixes },
+        E: { min: 1, max: 21, suffixes },
+        R: { min: 1, max: 2, suffixes: ['A', 'B', 'C', 'D'] },
     };
 
     let allLocations = [];
-    
+
     // Add ranges
     for (const row in locationRanges) {
         const { min, max, suffixes } = locationRanges[row];
@@ -96,8 +93,8 @@ if (skusCount.count === 0) {
 
     // All SKUs in an array
     const skus = [
-        'CHZ', 'BGY', 'CKC', 'TNR', 'MAJ', 'YSZ', 
-        'DYF', 'LKU', 'WWG', 'DEN', 'IBI', 'CYG', 
+        'CHZ', 'BGY', 'CKC', 'TNR', 'MAJ', 'YSZ',
+        'DYF', 'LKU', 'WWG', 'DEN', 'IBI', 'CYG',
         'BUD', 'EAI', 'UTD', 'TSC'
     ];
 

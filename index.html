@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preferred Pick</title>
+  <title>Shitty Stock System</title>
   <style>
     * {
       margin: 0;
@@ -11,18 +12,31 @@
       box-sizing: border-box;
     }
 
-   #cameraFeed {
-  width: 100%;
-  height: 250px;
-  position: relative;
-  overflow: hidden;
-}
+    #cameraFeed {
+      width: 100%;
+      height: 250px;
+      position: relative;
+      overflow: hidden;
+    }
 
-#cameraFeed video {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-}
+    #cameraFeed video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+    }
+
+    #multiScanCamera {
+      width: 100%;
+      height: 250px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #multiScanCamera video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+    }
 
     body {
       font-family: Arial, sans-serif;
@@ -125,13 +139,15 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h1>Preferred Pick</h1>
-    <button class="main-btn" onclick="promptForPreferredPick()">Preferred Pick</button>
+    <h1>Shitty Stock System</h1>
+    <button class="main-btn" onclick="searchStock()">Search Stock</button>
     <button class="main-btn" onclick="promptForMoveStock()">Move Stock</button>
-    <button class="main-btn" onclick="replenReport()">Replen Report</button>
-    <button class="main-btn" onclick="showThresholdModal()">Set Thresholds</button>
+    <button class="main-btn" onclick="showMultiScanModal('preferred')">Set Preferred Pick</button>
+    <button class="main-btn" onclick="showMultiScanModal('threshold')">Set Replen Thresholds</button>
+    <button class="main-btn" onclick="replenReport()">Generate Replen Report</button>
   </div>
 
   <div id="locationModal" class="modal">
@@ -145,245 +161,211 @@
   <div id="scanModal" class="modal">
     <div class="modal-content">
       <div class="modal-title" id="scanModalTitle">Scan Product SKU</div>
-      <p id="hintMessage" style="font-size: 0.95em; color: #666; margin: 0 0 15px 0; font-style: italic; display: none;"></p>
+      <p id="hintMessage"
+        style="font-size: 0.95em; color: #666; margin: 0 0 15px 0; font-style: italic; display: none;"></p>
       <div id="scanContainer" style="position: relative; width: 100%; margin-bottom: 15px;">
-        <div id="cameraFeed" style="width: 100%; height:250px; border: 2px solid #333;"></div>
-        <div id="scanStatus" style="text-align: center; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+        <div id="cameraFeed" style="width: 100%; height: 250px; border: 2px solid #333;"></div>
+        <div id="scanStatus"
+          style="text-align: center; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
           <p id="statusMessage">Preparing camera...</p>
-          <p id="scannedValue" style="font-weight: bold; font-size: 1.2em; color: #333; margin-top: 10px; display: none;"></p>
+          <p id="scannedValue"
+            style="font-weight: bold; font-size: 1.2em; color: #333; margin-top: 10px; display: none;"></p>
         </div>
       </div>
       <div style="display: flex; gap: 10px;">
         <button class="modal-close-btn" onclick="cancelScan()" style="flex: 1;">Cancel</button>
         <button id="torchBtn" style="display:none;">🔦 Toggle Torch</button>
-        <button id="manualInputBtn" style="flex: 1; padding: 10px; background-color: #666; color: white; border: none; cursor: pointer; border-radius: 4px;" onclick="manualInput()">Manual Input</button>
-        <button id="confirmScanBtn" style="flex: 1; padding: 10px; background-color: #333; color: white; border: none; cursor: pointer; border-radius: 4px; display: none;" onclick="confirmScan()">Confirm</button>
+        <button id="manualInputBtn"
+          style="flex: 1; padding: 10px; background-color: #666; color: white; border: none; cursor: pointer; border-radius: 4px;"
+          onclick="manualInput()">Manual Input</button>
+        <button id="confirmScanBtn"
+          style="flex: 1; padding: 10px; background-color: #333; color: white; border: none; cursor: pointer; border-radius: 4px; display: none;"
+          onclick="confirmScan()">Confirm</button>
       </div>
     </div>
   </div>
 
-<div id="replenModal" class="modal">
-  <div class="modal-content" style="max-width: 800px;">
-    <div class="modal-title">Replenishment Report</div>
-    <div style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">
-      <table id="replenTable" style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr>
-            <th style="border: 1px solid #ddd; padding: 8px;">SKU</th>
-            <th style="border: 1px solid #ddd; padding: 8px;">Preferred Pick</th>
-            <th style="border: 1px solid #ddd; padding: 8px;">Other Locations</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <button class="modal-close-btn" onclick="closeReplenModal()">Close</button>
-  </div>
-</div>
-
-<div id="thresholdModal" class="modal">
-  <div class="modal-content" style="max-width: 600px;">
-    <div class="modal-title">Set Replenishment Thresholds</div>
-    <label>Threshold Value:</label><br>
-    <input type="number" id="thresholdValue" style="width: 100%; margin-bottom: 10px;"><br>
-    <label>SKUs (scanned or typed):</label><br>
-    <textarea id="thresholdSkuInput" rows="5" style="width: 100%; margin-bottom: 10px;"></textarea><br>
-    <video id="thresholdCamera" autoplay playsinline style="width: 100%; border: 2px solid #333; margin-bottom: 10px;"></video>
-    <div style="display: flex; gap: 10px;">
-      <button onclick="applyThreshold()" style="flex: 1; padding: 10px; background-color: #333; color: white; border: none; cursor: pointer;">Apply Threshold</button>
-      <button onclick="closeThresholdModal()" style="flex: 1; padding: 10px; background-color: #999; color: white; border: none; cursor: pointer;">Cancel</button>
+  <div id="replenModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-title">Replenishment Report</div>
+      <div style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">
+        <table id="replenTable" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 8px;">SKU</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">Preferred Pick</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">Other Locations</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="modal-close-btn" onclick="closeReplenModal()">Close</button>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
-<script>
-  let thresholdScanner;
-  let html5QrCode;
-  let preferredLocations = {};
-  let selectedLocation = null;
-  let scannedValue = null;
-  let currentScanType = 'sku'; // 'sku' or 'location'
+  <div id="multiScanModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-title" id="multiScanTitle"></div>
+      <div id="thresholdSection">
+        <label id="multiScanLabel"></label><br>
+        <input type="number" id="thresholdValue" style="width: 100%; margin-bottom: 10px;"><br>
+      </div>
+      <label>SKUs (scanned or typed):</label><br>
+      <textarea id="multiScanSkuInput" rows="5" style="width: 100%; margin-bottom: 10px;"></textarea><br>
+      <div id="multiScanCamera" style="width: 100%; border: 2px solid #333; margin-bottom: 10px;"></div>
+      <div style="display: flex; gap: 10px;">
+        <button onclick="removeLastScannedSku()"
+          style="flex: 1; padding: 10px; background-color: #999; color: white; border: none; cursor: pointer;">Remove
+          last scanned SKU</button>
+        <button onclick="confirmMultiScan()"
+          style="flex: 1; padding: 10px; background-color: #333; color: white; border: none; cursor: pointer;">Confirm</button>
+        <button onclick="closeMultiScanModal()"
+          style="flex: 1; padding: 10px; background-color: #999; color: white; border: none; cursor: pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
 
-  // Load existing preferred locations on page load
-  window.addEventListener('DOMContentLoaded', loadPreferredLocations);
+  <div id="stockResultModal" class="modal">
+    <div class="modal-content">
+      <div id="stockResultTitle"></div>
+      <div id="stockResultBody"></div>
+      <button onclick="closeStockModal()">Close</button>
+    </div>
+  </div>
 
-  async function loadPreferredLocations() {
-    try {
-      const response = await fetch('/api/preferred-locations');
-      if (response.ok) {
-        preferredLocations = await response.json();
-      }
-    } catch (error) {
-      console.error('Error loading preferred locations:', error);
-    }
-  }
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    let html5QrCode;
+    let preferredLocations = {};
+    let cleanedValue = null;
+    let scannedValue = null;
+    let currentScanType = 'sku'; // 'sku' or 'location'
 
-  // Scan Modal Functions
-async function showScanModal(type = 'sku', hint = null) {
-  return new Promise((resolve) => {
-    const modal = document.getElementById('scanModal');
-    const statusMsg = document.getElementById('statusMessage');
-    const scannedValueEl = document.getElementById('scannedValue');
-    const hintMsg = document.getElementById('hintMessage');
+    // Load existing preferred locations on page load
+    window.addEventListener('DOMContentLoaded', loadPreferredLocations);
 
-    // Reset state
-    scannedValue = null;
-    currentScanType = type;
-    window.scanResolve = resolve;
-
-    // UI setup
-    modal.style.display = 'block';
-
-    document.getElementById('scanModalTitle').textContent =
-      type === 'sku' ? 'Scan Product SKU' : 'Scan Location';
-
-    document.getElementById('confirmScanBtn').style.display = 'none';
-    scannedValueEl.style.display = 'none';
-
-    if (hint) {
-      hintMsg.textContent = hint;
-      hintMsg.style.display = 'block';
-    } else {
-      hintMsg.style.display = 'none';
-    }
-
-    statusMsg.textContent = 'Starting camera...';
-
-    setTimeout(() => {
-
+    async function loadPreferredLocations() {
       try {
-        // Clean up previous scanner if exists
-        if (html5QrCode) {
-          html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-          }).catch(() => {});
-          html5QrCode = null;
+        const response = await fetch('/api/preferred-locations');
+        if (response.ok) {
+          preferredLocations = await response.json();
+        }
+      } catch (error) {
+        console.error('Error loading preferred locations:', error);
+      }
+    }
+
+    async function showScanModal(type = 'sku', hint = null) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('scanModal');
+        const statusMsg = document.getElementById('statusMessage');
+        const scannedValueEl = document.getElementById('scannedValue');
+        const hintMsg = document.getElementById('hintMessage');
+
+        // Reset state
+        scannedValue = null;
+        currentScanType = type;
+        window.scanResolve = resolve;
+
+        // UI setup
+        modal.style.display = 'block';
+
+        document.getElementById('scanModalTitle').textContent =
+          type === 'sku' ? 'Scan Product SKU' : 'Scan Location';
+
+        document.getElementById('confirmScanBtn').style.display = 'none';
+        scannedValueEl.style.display = 'none';
+
+        if (hint) {
+          hintMsg.textContent = hint;
+          hintMsg.style.display = 'block';
+        } else {
+          hintMsg.style.display = 'none';
         }
 
-        // Create scanner
-        html5QrCode = new Html5Qrcode("cameraFeed");
+        statusMsg.textContent = 'Starting camera...';
 
-        html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+        setTimeout(() => {
 
-          (decodedText) => {
-            scannedValue = decodedText;
+          try {
+            // Clean up previous scanner if exists
+            if (html5QrCode) {
+              html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+              }).catch(() => { });
+              html5QrCode = null;
+            }
 
-            statusMsg.textContent = "✓ Scanned Successfully!";
-            scannedValueEl.textContent = decodedText;
-            scannedValueEl.style.display = 'block';
+            // Create scanner
+            html5QrCode = new Html5Qrcode("cameraFeed");
 
-            // auto confirm
-            setTimeout(() => confirmScan(), 300);
-          },
+            html5QrCode.start(
+              { facingMode: "environment" },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
 
-          () => {
-            // ignore scan errors (normal)
+              (decodedText) => {
+                scannedValue = decodedText.toUpperCase();
+                if (scannedValue.length > 0) {
+                  cleanedValue = scannedValue.slice(1);
+                }
+
+                statusMsg.textContent = "✓ Scanned Successfully!";
+                scannedValueEl.textContent = cleanedValue;
+                scannedValueEl.style.display = 'block';
+
+                // auto confirm
+                setTimeout(() => confirmScan(), 1000);
+              },
+
+              () => {
+                // ignore scan errors (normal)
+              }
+
+            ).then(() => {
+              statusMsg.textContent = "Camera ready - point at code";
+
+            }).catch(err => {
+              console.error("Scanner start failed:", err);
+              statusMsg.textContent = "Camera failed. Use manual input.";
+            });
+
+          } catch (err) {
+            console.error("Camera error:", err);
+            statusMsg.textContent = "Camera error. Use manual input.";
           }
 
-        ).then(() => {
-  statusMsg.textContent = "Camera ready - point at code";
-
-  // 🔦 TORCH SETUP
-  const torchBtn = document.getElementById("torchBtn");
-
-  if (!torchBtn) return; // safety check
-
-  try {
-    const track = html5QrCode.getRunningTrack();
-    const capabilities = track.getCapabilities();
-
-    if (capabilities && capabilities.torch) {
-      torchBtn.style.display = 'block';
-      torchBtn.textContent = "🔦 Turn Torch On";
-
-      let torchOn = false;
-
-      torchBtn.onclick = async () => {
-        try {
-          torchOn = !torchOn;
-
-          await track.applyConstraints({
-            advanced: [{ torch: torchOn }]
-          });
-
-          torchBtn.textContent = torchOn
-            ? "🔦 Torch ON"
-            : "🔦 Torch OFF";
-
-        } catch (err) {
-          console.error("Torch toggle failed:", err);
-        }
-      };
-
-    } else {
-      torchBtn.style.display = 'none';
+        }, 300); // delay for iOS
+      });
     }
 
-  } catch (err) {
-    console.warn("Torch not supported:", err);
-    torchBtn.style.display = 'none';
-  }
-}).catch(err => {
-          console.error("Scanner start failed:", err);
-          statusMsg.textContent = "Camera failed. Use manual input.";
-        });
+    function confirmScan() {
+      let value = null;
 
-      } catch (err) {
-        console.error("Camera error:", err);
-        statusMsg.textContent = "Camera error. Use manual input.";
+      // Priority 1: scanned value
+      if (cleanedValue) {
+        value = cleanedValue;
+      }
+      // Priority 2: manual input
+      else if (scannedValue) {
+        value = scannedValue;
       }
 
-    }, 300); // 👈 critical delay for iOS
-  });
-}
+      if (!value) {
+        alert("Please scan or enter a value");
+        return;
+      }
 
-function startQrScanner() {
-  const statusMsg = document.getElementById('statusMessage');
-  const scannedValueEl = document.getElementById('scannedValue');
+      closeScanModal();
 
-  html5QrCode = new Html5Qrcode("cameraFeed");
-
-  const config = {
-    fps: 10,
-    qrbox: { width: 250, height: 250 }
-  };
-
-  html5QrCode.start(
-    { facingMode: { ideal: "environment" } },
-    config,
-    (decodedText) => {
-      // SUCCESS
-      scannedValue = decodedText;
-
-      statusMsg.textContent = "✓ Scanned Successfully!";
-      scannedValueEl.textContent = decodedText;
-      scannedValueEl.style.display = 'block';
-
-      // Auto-confirm (recommended)
-      setTimeout(() => confirmScan(), 300);
-    },
-    (errorMessage) => {
-      // Ignore scan errors (normal)
-    }
-  ).catch(err => {
-    statusMsg.textContent = "Camera error. Use manual input.";
-    console.error(err);
-  });
-}
-
-  function confirmScan() {
-      if (scannedValue) {
-        const capturedValue = scannedValue;
-        closeScanModal();
-        window.scanResolve(capturedValue);
+      if (window.scanResolve) {
+        window.scanResolve(value);
+        window.scanResolve = null;
       }
     }
 
-  function manualInput() {
+    function manualInput() {
       const inputType = currentScanType === 'sku' ? 'SKU' : 'Location';
       const input = prompt(`Enter ${inputType} manually:`);
       if (input && input.trim()) {
@@ -397,31 +379,31 @@ function startQrScanner() {
       }
     }
 
-  function cancelScan() {
+    function cancelScan() {
       closeScanModal();
       window.scanResolve(null);
     }
 
-async function closeScanModal() {
-  const modal = document.getElementById('scanModal');
+    async function closeScanModal() {
+      const modal = document.getElementById('scanModal');
 
-  document.getElementById("torchBtn").style.display = "none";
+      document.getElementById("torchBtn").style.display = "none";
 
-  if (html5QrCode) {
-    try {
-      await html5QrCode.stop();
-      await html5QrCode.clear();
-    } catch (err) {
-      console.log("Scanner stop error:", err);
+      if (html5QrCode) {
+        try {
+          await html5QrCode.stop();
+          await html5QrCode.clear();
+        } catch (err) {
+          console.log("Scanner stop error:", err);
+        }
+        html5QrCode = null;
+      }
+
+      modal.style.display = 'none';
+      scannedValue = null;
     }
-    html5QrCode = null;
-  }
 
-  modal.style.display = 'none';
-  scannedValue = null;
-}
-
-  function showLocationModal(locations, title) {
+    function showLocationModal(locations, title) {
       return new Promise((resolve) => {
         const modal = document.getElementById('locationModal');
         const modalTitle = document.getElementById('modalTitle');
@@ -435,7 +417,6 @@ async function closeScanModal() {
           btn.className = 'location-btn';
           btn.textContent = `${item.location} (${item.quantity} units)`;
           btn.onclick = () => {
-            selectedLocation = item.location;
             modal.style.display = 'none';
             resolve(item.location);
           };
@@ -451,89 +432,212 @@ async function closeScanModal() {
       });
     }
 
-  function closeLocationModal() {
+    function closeLocationModal() {
       document.getElementById('locationModal').style.display = 'none';
       if (window.closeLocationModalResolve) {
         window.closeLocationModalResolve();
       }
     }
 
-  async function promptForPreferredPick() {
-      const product = await showScanModal('sku');
-      if (product === null) return; // User cancelled
+    async function showMultiScanModal(mode) {
+      const modal = document.getElementById('multiScanModal');
+      const textarea = document.getElementById('multiScanSkuInput');
+      const video = document.getElementById('multiScanCamera');
 
-      if (!product.trim()) {
-        alert('Please scan a valid SKU');
-        return;
+      const thresholdSection = document.getElementById('thresholdSection');
+      document.getElementById('thresholdValue').value = '';
+
+      thresholdSection.style.display = (mode === 'preferred') ? 'none' : 'block';
+
+      const title = document.getElementById('multiScanTitle');
+      const label = document.getElementById('multiScanLabel');
+
+      if (mode === 'preferred') {
+        title.textContent = 'Set Preferred Pick';
+        label.textContent = 'Scan SKUs to set preferred pick location:';
+      } else {
+        title.textContent = 'Set Replenishment Thresholds';
+        label.textContent = 'Enter threshold and scan SKUs:';
       }
 
-      const productUpper = product.toUpperCase();
+      modal.style.display = 'block';
+      textarea.value = '';
+      video.style.display = 'block';
 
-      // Check if SKU exists
-      try {
-        const skuResponse = await fetch(`/api/sku/${productUpper}`);
-        if (!skuResponse.ok) {
-          const errorData = await skuResponse.json();
-          alert(errorData.error || `SKU '${productUpper}' not found`);
-          return;
+      const scannedSkus = [];
+      const scannedSet = new Set();
+
+      window.scannedSkus = scannedSkus;
+      window.scannedSet = scannedSet;
+
+      scannedValue = null;
+      // Start scanner
+      setTimeout(async () => {
+        try {
+          if (html5QrCode) {
+            try { await html5QrCode.stop(); await html5QrCode.clear(); } catch { }
+          }
+          html5QrCode = new Html5Qrcode("multiScanCamera");
+
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+              scannedValue = decodedText.toUpperCase();
+              let cleaned = null;
+
+              if (scannedValue.length > 0) {
+                cleaned = scannedValue.slice(1);
+              }
+
+              if (!cleaned) return;
+              if (!scannedSet.has(cleaned)) {
+                scannedSet.add(cleaned);
+                scannedSkus.push(cleaned);
+                textarea.value = scannedSkus.join(', ');
+              }
+            },
+            () => { }
+          );
+        } catch (err) {
+          console.error('Scanner error:', err);
+          alert('Camera not available.');
         }
-      } catch (error) {
-        alert('Error: ' + error.message);
-        return;
-      }
+      }, 300);
 
-      const location = await showScanModal('location');
-      if (location === null) return; // User cancelled
+      // Wait for user to confirm
+      const skuList = await new Promise(resolve => {
+        window.multiScanResolve = resolve;
+      });
 
-      if (!location.trim()) {
-        alert('Please enter a valid location');
-        return;
-      }
-
-      const locationUpper = location.toUpperCase();
-
-      // Check if location exists
+      // Stop scanner
       try {
+        await html5QrCode.stop();
+        await html5QrCode.clear();
+        html5QrCode = null;
+      } catch { }
+
+      await new Promise(res => setTimeout(res, 300));
+      modal.style.display = 'none';
+
+      if (!skuList || skuList.length === 0) return;
+
+      if (mode === 'preferred') {
+
+        // Scan location
+        const location = await showScanModal('location');
+        if (!location) return;
+
+        const locationUpper = location.toUpperCase();
+
+        // Validate location
         const locResponse = await fetch('/api/locations');
-        if (!locResponse.ok) throw new Error('Failed to fetch locations');
-        
         const locations = await locResponse.json();
+
         if (!locations.includes(locationUpper)) {
           alert(`Location '${locationUpper}' does not exist`);
           return;
         }
-      } catch (error) {
-        alert('Error: ' + error.message);
-        return;
+
+        // Existing check
+        const existing = skuList.filter(sku => preferredLocations[sku]);
+
+        if (existing.length > 0) {
+          const confirmed = confirm(
+            `${existing.length} SKUs already have preferred picks.\nOverwrite with ${locationUpper}?`
+          );
+          if (!confirmed) return;
+        }
+
+        // Preview
+        const preview = skuList.slice(0, 10).join(', ');
+        if (!confirm(`Set ${locationUpper} for:\n${preview}?`)) return;
+
+        // Save
+        let success = 0;
+        for (const sku of skuList) {
+          try {
+            const res = await fetch('/api/preferred-locations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sku, location: locationUpper })
+            });
+
+            if (res.ok) {
+              preferredLocations[sku] = locationUpper;
+              success++;
+            }
+          } catch { }
+        }
+
+        alert(`Updated ${success}/${skuList.length} SKUs`);
       }
 
-      // Check if SKU already has a preferred location
-      if (preferredLocations[productUpper]) {
-        const currentLocation = preferredLocations[productUpper];
-        const confirmed = confirm(
-          `Changing location for ${productUpper}.\nCurrent location: ${currentLocation}\nNew location: ${locationUpper}\n\nConfirm change?`
-        );
-        if (!confirmed) return;
-      }
+      if (mode === 'threshold') {
 
-      try {
-        const response = await fetch('/api/preferred-locations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sku: productUpper, location: locationUpper })
-        });
+        const value = document.getElementById('thresholdValue').value;
+        const threshold = parseInt(value);
 
-        if (!response.ok) throw new Error('Failed to save location');
-        
-        // Update local cache
-        preferredLocations[productUpper] = locationUpper;
-        alert('Location saved successfully');
-      } catch (error) {
-        alert('Error: ' + error.message);
+        if (isNaN(threshold) || threshold < 0) {
+          alert('Please enter a valid threshold');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/replen-thresholds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skus: skuList, threshold })
+          });
+
+          if (res.ok) {
+            alert(`Threshold set for ${skuList.length} SKUs`);
+          } else {
+            alert('Failed to set thresholds');
+          }
+        } catch {
+          alert('Error setting thresholds');
+        }
       }
     }
 
-  async function promptForMoveStock() {
+    function confirmMultiScan() {
+      let skuList = [];
+
+      // Prefer scanned SKUs if they exist
+      if (window.scannedSkus && window.scannedSkus.length > 0) {
+        skuList = window.scannedSkus;
+      } else {
+        // fallback to manual input
+        const textarea = document.getElementById('multiScanSkuInput');
+        skuList = textarea.value
+          .split(',')
+          .map(s => s.trim().toUpperCase())
+          .filter(s => s.length > 0);
+      }
+
+      if (!skuList.length) {
+        alert("No SKUs entered");
+        return;
+      }
+
+      if (window.multiScanResolve) {
+        window.multiScanResolve(skuList);
+        window.multiScanResolve = null;
+      }
+    }
+
+    function removeLastScannedSku() {
+      if (!window.scannedSkus || window.scannedSkus.length === 0) return;
+
+      const removed = window.scannedSkus.pop();
+      window.scannedSet.delete(removed);
+
+      const textarea = document.getElementById('multiScanSkuInput');
+      textarea.value = window.scannedSkus.join(', ');
+    }
+
+    async function promptForMoveStock() {
       const sku = await showScanModal('sku');
       if (sku === null) return;
 
@@ -561,7 +665,7 @@ async function closeScanModal() {
       try {
         const response = await fetch('/inventory');
         if (!response.ok) throw new Error('Failed to fetch inventory');
-        
+
         const inventory = await response.json();
         const locationsWithStock = inventory
           .filter(item => item.sku === skuUpper && item.quantity > 0)
@@ -576,7 +680,7 @@ async function closeScanModal() {
         if (!fromLocation) return;
 
         // Get preferred location for this SKU if it exists
-        const preferredHint = preferredLocations[skuUpper] 
+        const preferredHint = preferredLocations[skuUpper]
           ? `Preferred pick location for ${skuUpper}: ${preferredLocations[skuUpper]}`
           : null;
 
@@ -589,11 +693,6 @@ async function closeScanModal() {
         const quantity = parseInt(quantityStr);
         if (isNaN(quantity) || quantity <= 0) {
           alert('Please enter a valid quantity');
-          return;
-        }
-
-        if (!toLocation.trim()) {
-          alert('Please enter all required fields');
           return;
         }
 
@@ -626,147 +725,143 @@ async function closeScanModal() {
       }
     }
 
-  async function replenReport() {
-  const modal = document.getElementById('replenModal');
-  const tableBody = document.querySelector('#replenTable tbody');
+    async function replenReport() {
+      const modal = document.getElementById('replenModal');
+      const tableBody = document.querySelector('#replenTable tbody');
 
-  // Clear previous table
-  tableBody.innerHTML = '';
+      tableBody.innerHTML = '';
 
-  try {
-    const response = await fetch('/api/replen-report');
-    if (!response.ok) throw new Error('Failed to fetch replenishment report');
+      try {
+        const response = await fetch('/api/replen-report');
+        if (!response.ok) throw new Error('Failed to fetch replenishment report');
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (data.length === 0) {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td colspan="4" style="text-align:center; padding:10px;">All SKUs are above thresholds or have no preferred pick.</td>`;
-      tableBody.appendChild(row);
-    } else {
-      data.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td style="border: 1px solid #ddd; padding: 8px;">${item.sku}</td>
-          <td style="border: 1px solid #ddd; padding: 8px;">${item.preferredPick}</td>
-          <td style="border: 1px solid #ddd; padding: 8px;">${item.otherLocations}</td>
+        if (data.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td colspan="4" style="text-align:center; padding:10px;">All SKUs are above thresholds or have no preferred pick.</td>`;
+          tableBody.appendChild(row);
+        } else {
+          data.forEach(item => {
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+          <td>${item.sku}</td>
+          <td>${item.preferredPick} (${item.preferredQty})</td>
+          <td>${item.otherLocations}</td>
         `;
-        tableBody.appendChild(row);
-      });
+            tableBody.appendChild(row);
+          });
+        }
+
+        modal.style.display = 'block';
+      } catch (error) {
+        alert('Error loading replenishment report: ' + error.message);
+      }
     }
 
-    modal.style.display = 'block';
-  } catch (error) {
-    alert('Error loading replenishment report: ' + error.message);
-  }
-}
+    function closeReplenModal() {
+      document.getElementById('replenModal').style.display = 'none';
+    }
 
-function closeReplenModal() {
-  document.getElementById('replenModal').style.display = 'none';
-}
+    async function closeMultiScanModal() {
+      const modal = document.getElementById('multiScanModal');
 
-async function showThresholdModal() {
-  const modal = document.getElementById('thresholdModal');
-  modal.style.display = 'block';
-
-  const textarea = document.getElementById('thresholdSkuInput');
-  textarea.value = '';
-
-  const video = document.getElementById('thresholdCamera');
-  video.style.display = 'block';
-
-  const scannedSkus = new Set();
-
-  // ---- iOS friendly camera init ----
-  (async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
-      video.srcObject = stream;
-      await video.play();
-
-      if (thresholdScanner) {
-        await thresholdScanner.stop();
-        await thresholdScanner.clear();
+      // Stop scanner safely
+      if (html5QrCode) {
+        try {
+          await html5QrCode.stop();
+          await html5QrCode.clear();
+        } catch (err) {
+          console.warn("Scanner cleanup failed:", err);
+        }
+        html5QrCode = null;
       }
 
-      thresholdScanner = new Html5Qrcode("thresholdCamera");
+      modal.style.display = 'none';
 
-      thresholdScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          const code = decodedText.toUpperCase();
-          if (!scannedSkus.has(code)) {
-            scannedSkus.add(code);
-            textarea.value = Array.from(scannedSkus).join(', ');
-          }
+      // Prevent hanging promise
+      if (window.multiScanResolve) {
+        window.multiScanResolve(null);
+        window.multiScanResolve = null;
+      }
+    }
+
+    async function searchStock() {
+      const sku = await showScanModal('sku');
+
+      if (!sku) return;
+
+      const cleanedSku = sku.toUpperCase();
+
+      await showStockResults(cleanedSku);
+    }
+
+    async function showStockResults(sku) {
+      try {
+        const res = await fetch(`/api/stock/${sku}`);
+
+        if (!res.ok) {
+          alert(`No stock found for ${sku}`);
+          return;
         }
-      );
-    } catch (err) {
-      console.error('Threshold camera error:', err);
-      video.style.display = 'none';
-      alert('Camera not available. Please enter SKUs manually.');
+
+        const data = await res.json();
+
+        renderStockModal(sku, data);
+
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching stock");
+      }
     }
-  })();
-}
 
-async function closeThresholdModal() {
-  const modal = document.getElementById('thresholdModal');
-  modal.style.display = 'none';
+    function renderStockModal(sku, locations) {
+      const modal = document.getElementById('stockResultModal');
+      const title = document.getElementById('stockResultTitle');
+      const body = document.getElementById('stockResultBody');
 
-  if (thresholdScanner) {
-    try {
-      await thresholdScanner.stop();
-      await thresholdScanner.clear();
-    } catch (err) {
-      console.log("Threshold scanner stop error:", err);
+      title.textContent = `Stock for ${sku}`;
+
+      const preferred = preferredLocations[sku];
+
+      let preferredHtml = '';
+
+      if (preferred) {
+        preferredHtml = `
+      <div style="
+        padding: 8px;
+        margin-bottom: 10px;
+        background: #1e3a1e;
+        border: 1px solid #4caf50;
+        color: #a5d6a7;
+        font-weight: bold;
+      ">
+        Preferred Pick: ${preferred}
+      </div>
+    `;
+      }
+
+      if (!locations || locations.length === 0) {
+        body.innerHTML = preferredHtml + "<p>No stock found</p>";
+      } else {
+        const listHtml = locations.map(loc => `
+      <div style="padding: 5px; border-bottom: 1px solid #ccc;">
+        <strong>${loc.location}</strong> — Qty: ${loc.quantity}
+      </div>
+    `).join('');
+
+        body.innerHTML = preferredHtml + listHtml;
+      }
+
+      modal.style.display = 'block';
     }
-    thresholdScanner = null;
-  }
 
-  const video = document.getElementById('thresholdCamera');
-  if (video.srcObject) {
-    const tracks = video.srcObject.getTracks();
-    tracks.forEach(track => track.stop());
-    video.srcObject = null;
-  }
-}
+    function closeStockModal() {
+      document.getElementById('stockResultModal').style.display = 'none';
+    }
 
-async function applyThreshold() {
-  const threshold = parseInt(document.getElementById('thresholdValue').value);
-  if (isNaN(threshold) || threshold <= 0) {
-    alert("Enter a valid threshold value");
-    return;
-  }
-
-  const skusText = document.getElementById('thresholdSkuInput').value;
-  const skus = skusText.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
-
-  if (skus.length === 0) {
-    alert("No SKUs to apply threshold");
-    return;
-  }
-
-  try {
-    const response = await fetch('/api/set-thresholds', {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ skus, threshold })
-    });
-
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Failed to set thresholds");
-
-    alert(`Threshold of ${threshold} applied to ${skus.length} SKUs`);
-    closeThresholdModal();
-  } catch (err) {
-    alert("Error: " + err.message);
-  }
-}
-
-</script>
+  </script>
 </body>
+
 </html>
