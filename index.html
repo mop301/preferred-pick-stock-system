@@ -174,7 +174,7 @@
       </div>
       <div style="display: flex; gap: 10px;">
         <button class="modal-close-btn" onclick="cancelScan()" style="flex: 1;">Cancel</button>
-        <button id="torchBtn" style="display:none;">🔦 Toggle Torch</button>
+        <button id="torchBtn" style="display:none;">Toggle Torch</button>
         <button id="manualInputBtn"
           style="flex: 1; padding: 10px; background-color: #666; color: white; border: none; cursor: pointer; border-radius: 4px;"
           onclick="manualInput()">Manual Input</button>
@@ -266,6 +266,7 @@
 
         // Reset state
         scannedValue = null;
+        cleanedValue = null;
         currentScanType = type;
         window.scanResolve = resolve;
 
@@ -457,7 +458,7 @@
         label.textContent = 'Scan SKUs to set preferred pick location:';
       } else {
         title.textContent = 'Set Replenishment Thresholds';
-        label.textContent = 'Enter threshold and scan SKUs:';
+        label.textContent = 'Enter threshold:';
       }
 
       modal.style.display = 'block';
