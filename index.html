@@ -148,6 +148,7 @@
     <button class="main-btn" onclick="showMultiScanModal('preferred')">Set Preferred Pick</button>
     <button class="main-btn" onclick="showMultiScanModal('threshold')">Set Replen Thresholds</button>
     <button class="main-btn" onclick="replenReport()">Generate Replen Report</button>
+    <button class="main-btn" onclick="preferredPickReport()">Preferred Pick Report</button>
   </div>
 
   <div id="locationModal" class="modal">
@@ -231,6 +232,24 @@
       <div id="stockResultTitle"></div>
       <div id="stockResultBody"></div>
       <button onclick="closeStockModal()">Close</button>
+    </div>
+  </div>
+
+  <div id="preferredPickModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-title">Preferred Pick Report</div>
+      <div style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">
+        <table id="preferredPickTable" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 8px;">Location</th>
+              <th style="border: 1px solid #ddd; padding: 8px;">SKU</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="modal-close-btn" onclick="closePreferredPickModal()">Close</button>
     </div>
   </div>
 
@@ -862,6 +881,43 @@
       document.getElementById('stockResultModal').style.display = 'none';
     }
 
+    async function preferredPickReport() {
+      const modal = document.getElementById('preferredPickModal');
+      const tableBody = document.querySelector('#preferredPickTable tbody');
+
+      tableBody.innerHTML = '';
+
+      try {
+        const response = await fetch('/api/preferred-pick-report');
+        if (!response.ok) throw new Error('Failed to fetch preferred pick report');
+
+        const data = await response.json();
+        console.log(data)
+
+        if (data.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td colspan="3" style="text-align:center; padding:10px;">No preferred pick locations set.</td>`;
+          tableBody.appendChild(row);
+        } else {
+          data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+          <td style="border: 1px solid #ddd; padding: 8px;">${item.location}</td>
+          <td style="border: 1px solid #ddd; padding: 8px;">${item.skus}</td>
+        `;
+            tableBody.appendChild(row);
+          });
+        }
+
+        modal.style.display = 'block';
+      } catch (error) {
+        alert('Error loading preferred pick report: ' + error.message);
+      }
+    }
+
+    function closePreferredPickModal() {
+      document.getElementById('preferredPickModal').style.display = 'none';
+    }
   </script>
 </body>
 

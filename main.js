@@ -424,6 +424,31 @@ app.delete('/api/preferred-locations/:sku', (req, res) => {
   }
 });
 
+app.get('/api/preferred-pick-report', (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT 
+        p.location,
+        GROUP_CONCAT(p.sku || ' (' || COALESCE(
+          (SELECT quantity 
+           FROM inventory 
+           WHERE sku = p.sku AND location = p.location), 
+          0
+        ) || ')') AS skus
+      FROM preferred_locations p
+      GROUP BY p.location
+      ORDER BY p.location
+    `);
+
+    const rows = stmt.all();
+    res.json(rows);
+
+  } catch (err) {
+    console.error('Error generating preferred pick report:', err);
+    res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
 // Start server
 const server = app.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
